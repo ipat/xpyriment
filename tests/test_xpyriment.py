@@ -31,10 +31,14 @@ def test_create_sample_df():
     ]
 
     # test variant_skew that we allocate 1% more to A
-    test_df = generate_sample_df(df_size=10000, variant_skew=1e-2)
+    test_df = generate_sample_df(df_size=10000, variant_skew=1e-1)
     num_A = test_df.loc[test_df.variant == "A"].count()
-    assert pytest.approx(num_A, 100) == int(10000 * 0.51)
+    assert pytest.approx(num_A, 10) == int(10000 * 0.6)
 
 
 def test_calculate_srm():
+
+    test_df = generate_sample_df(seed=101)
+    detect_srm(test_df, detect_cols=["state", "purchase_freq", "is_in_another_exp"])
+
     pass
