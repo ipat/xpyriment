@@ -1,3 +1,5 @@
+from copy import deepcopy
+from unittest import result
 import pandas as pd
 import numpy as np
 from itertools import cycle
@@ -14,10 +16,27 @@ def add_skew(
     return new_weight_arr
 
 
+def generate_dummy_funnel_arr(
+    n_rows: int = 100,
+    n_cols: int = 1,
+    p: List[int] = [0.6, 0.4],
+    outcomes: List[int] = [0, 1],
+):
+    results = np.hstack(
+        (np.ones((n_rows, 1)), np.random.choice(outcomes, (n_rows, n_cols), p=p))
+    )
+
+    for x, y in zip(range(0, n_cols), range(1, n_cols + 1)):
+        results[:, y] = results[:, x] * results[:, y]
+
+    return results[:, 1:].T.tolist()
+
+
 def generate_sample_df(
     df_size: int = 2000,
     seed: int = 1234,
     skew_degree: float = 0.0,
+    funnel_cols: List[str] = ["result"],
 ) -> pd.DataFrame:
     """Gernerate sample dataframe for the testing
 
@@ -25,6 +44,7 @@ def generate_sample_df(
         df_size (int, optional): Number of sample df rows. Defaults to 2000.
         seed (int, optional): Random seed. Defaults to 1234.
         skew_degree (float, optional): Set if want to have skew the allocation within the features. Defaults to 0.
+        funnel_cols (List(str), optional): Define the results from the sample in case want multiple mock up columns tha represent funnel. Defaults is ['result']
 
     Returns:
         pd.DataFrame: Generated dataframe
@@ -48,33 +68,59 @@ def generate_sample_df(
     is_in_another_exp_p = [0.8, 0.2]
 
     result_list = [0, 1]
-    result_p = [0.9, 0.1]
+    result_p = [0.6, 0.4]
 
     data = pd.DataFrame(
         np.vstack(
             (
                 np.array(
                     [
-                        np.random.choice(first_name_list, df_size_variant),
-                        np.random.choice(last_name_list, df_size_variant),
-                        np.random.choice(["A"], df_size_variant),
-                        np.random.choice(state_list, df_size_variant, p=state_p),
                         np.random.choice(
-                            purchase_freq_list, df_size_variant, p=purchase_freq_p
+                            first_name_list,
+                            df_size_variant,
+                        ),
+                        np.random.choice(
+                            last_name_list,
+                            df_size_variant,
+                        ),
+                        np.random.choice(
+                            ["A"],
+                            df_size_variant,
+                        ),
+                        np.random.choice(
+                            state_list,
+                            df_size_variant,
+                            p=state_p,
+                        ),
+                        np.random.choice(
+                            purchase_freq_list,
+                            df_size_variant,
+                            p=purchase_freq_p,
                         ),
                         np.random.choice(
                             is_in_another_exp_list,
                             df_size_variant,
                             p=is_in_another_exp_p,
                         ),
-                        np.random.choice(result_list, df_size_variant, p=result_p),
                     ]
+                    + generate_dummy_funnel_arr(
+                        df_size_variant, len(funnel_cols), result_p, result_list
+                    )
                 ).T,
                 np.array(
                     [
-                        np.random.choice(first_name_list, df_size_variant),
-                        np.random.choice(last_name_list, df_size_variant),
-                        np.random.choice(["B"], df_size_variant),
+                        np.random.choice(
+                            first_name_list,
+                            df_size_variant,
+                        ),
+                        np.random.choice(
+                            last_name_list,
+                            df_size_variant,
+                        ),
+                        np.random.choice(
+                            ["B"],
+                            df_size_variant,
+                        ),
                         np.random.choice(
                             state_list,
                             df_size_variant,
@@ -90,8 +136,10 @@ def generate_sample_df(
                             df_size_variant,
                             p=add_skew(is_in_another_exp_p, skew_degree),
                         ),
-                        np.random.choice(result_list, df_size_variant, p=result_p),
                     ]
+                    + generate_dummy_funnel_arr(
+                        df_size_variant, len(funnel_cols), result_p, result_list
+                    )
                 ).T,
             )
         ),
@@ -102,8 +150,9 @@ def generate_sample_df(
             "state",
             "purchase_freq",
             "is_in_another_exp",
-            "result",
-        ],
+        ]
+        + funnel_cols,
     )
+    
 
     return data.sample(frac=1)
